@@ -10,18 +10,16 @@ import {
   CheckCircle,
   XCircle,
   Filter,
-  Calendar,
-  DollarSign
+  Calendar
 } from 'lucide-react';
-import { Policy, Product, User } from '@/types';
-import { policiesAPI, productsAPI, usersAPI } from '@/services/api';
+import { Policy, Product } from '@/types';
+import { policiesAPI, productsAPI } from '@/services/api';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatCurrency } from '@/utils/format';
 
 const PoliciesPage: React.FC = () => {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,7 +31,7 @@ const PoliciesPage: React.FC = () => {
     product_id: '',
     premium_amount: 0,
     sum_assured: 0,
-    payment_frequency: 'monthly' as const,
+    payment_frequency: 'monthly' as 'monthly' | 'quarterly' | 'annually',
   });
 
   useEffect(() => {
@@ -44,14 +42,12 @@ const PoliciesPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const [policiesResponse, productsResponse, usersResponse] = await Promise.all([
+      const [policiesResponse, productsResponse] = await Promise.all([
         policiesAPI.getAll(1, 100, selectedStatus || undefined),
-        productsAPI.getAll(),
-        usersAPI.getAll(1, 100)
+        productsAPI.getAll()
       ]);
       setPolicies(policiesResponse.data);
       setProducts(productsResponse);
-      setUsers(usersResponse.data);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       setError('Failed to load policies. Please check your connection and try again.');
@@ -135,7 +131,7 @@ const PoliciesPage: React.FC = () => {
       product_id: '',
       premium_amount: 0,
       sum_assured: 0,
-      payment_frequency: 'monthly',
+      payment_frequency: 'monthly' as 'monthly' | 'quarterly' | 'annually',
     });
   };
 

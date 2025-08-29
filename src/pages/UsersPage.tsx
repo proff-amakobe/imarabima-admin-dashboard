@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Plus, 
   Search, 
   Edit, 
   Trash2, 
@@ -26,7 +25,8 @@ const UsersPage: React.FC = () => {
     name: '',
     phone_number: '',
     national_id: '',
-    role: 'customer' as const,
+    password: '',
+    role: 'customer' as 'customer' | 'agent' | 'admin',
   });
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const UsersPage: React.FC = () => {
     try {
       await usersAPI.create(formData);
       setShowCreateModal(false);
-      setFormData({ name: '', phone_number: '', national_id: '', role: 'customer' });
+      setFormData({ name: '', phone_number: '', national_id: '', password: '', role: 'customer' as 'customer' | 'agent' | 'admin' });
       fetchUsers();
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -71,7 +71,7 @@ const UsersPage: React.FC = () => {
     try {
       await usersAPI.update(editingUser.id, formData);
       setEditingUser(null);
-      setFormData({ name: '', phone_number: '', national_id: '', role: 'customer' });
+      setFormData({ name: '', phone_number: '', national_id: '', password: '', role: 'customer' as 'customer' | 'agent' | 'admin' });
       fetchUsers();
     } catch (error) {
       console.error('Failed to update user:', error);
@@ -107,6 +107,7 @@ const UsersPage: React.FC = () => {
       name: user.name,
       phone_number: user.phone_number,
       national_id: user.national_id,
+      password: '',
       role: user.role,
     });
   };
@@ -319,6 +320,16 @@ const UsersPage: React.FC = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700">Role</label>
                 <select
                   value={formData.role}
@@ -383,6 +394,15 @@ const UsersPage: React.FC = () => {
                   required
                   value={formData.national_id}
                   onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Password (leave blank to keep current)</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

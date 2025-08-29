@@ -8,15 +8,13 @@ import {
   Activity,
   AlertCircle
 } from 'lucide-react';
-import { DashboardStats, RevenueData, PolicyStatusData } from '@/types';
+import { DashboardStats } from '@/types';
 import { dashboardAPI } from '@/services/api';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { formatCurrency } from '@/utils/format';
 
 const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
-  const [policyStatusData, setPolicyStatusData] = useState<PolicyStatusData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,15 +23,8 @@ const DashboardPage: React.FC = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const [statsData, revenueData, policyStatusData] = await Promise.all([
-          dashboardAPI.getStats(),
-          dashboardAPI.getRevenueData(),
-          dashboardAPI.getPolicyStatusData(),
-        ]);
-
+        const statsData = await dashboardAPI.getStats();
         setStats(statsData);
-        setRevenueData(revenueData);
-        setPolicyStatusData(policyStatusData);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         setError('Failed to load dashboard data. Please check your connection and try again.');
