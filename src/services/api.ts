@@ -370,7 +370,18 @@ export const productsAPI = {
       const response = await api.get<{products: Product[]}>('/products', {
         params: { type },
       });
-      return response.data.products;
+      console.log('Products API response structure:', response.data);
+      
+      // Handle different possible response structures
+      if (response.data.products) {
+        return response.data.products;
+      } else if (Array.isArray(response.data)) {
+        // If the response is directly an array
+        return response.data;
+      } else {
+        console.warn('Unexpected products response structure:', response.data);
+        return [];
+      }
     } catch (error: any) {
       if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock products data for development');
@@ -483,13 +494,33 @@ export const policiesAPI = {
         params: { page, limit, status },
       });
       
+      console.log('Policies API response structure:', response.data);
+      
+      // Handle different possible response structures
+      let policies: Policy[] = [];
+      let pagination = { total: 0, page: 1, limit: 10, totalPages: 1 };
+      
+      if (response.data.policies) {
+        policies = response.data.policies;
+        pagination = response.data.pagination || { total: policies.length, page: 1, limit: 10, totalPages: 1 };
+      } else if (Array.isArray(response.data)) {
+        // If the response is directly an array
+        policies = response.data;
+        pagination = { total: policies.length, page: 1, limit: 10, totalPages: 1 };
+      } else {
+        // Fallback - try to find policies in the response
+        console.warn('Unexpected policies response structure:', response.data);
+        policies = [];
+        pagination = { total: 0, page: 1, limit: 10, totalPages: 1 };
+      }
+      
       // Transform the response to match our expected format
       return {
-        data: response.data.policies,
-        total: response.data.pagination.total,
-        page: response.data.pagination.page,
-        limit: response.data.pagination.limit,
-        totalPages: response.data.pagination.totalPages
+        data: policies,
+        total: pagination.total,
+        page: pagination.page,
+        limit: pagination.limit,
+        totalPages: pagination.totalPages
       };
     } catch (error: any) {
       if (isDevelopment && error.response?.status === 404) {
