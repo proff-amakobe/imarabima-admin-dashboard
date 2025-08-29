@@ -5,7 +5,8 @@ import {
   Package, 
   DollarSign,
   TrendingUp,
-  Activity
+  Activity,
+  AlertCircle
 } from 'lucide-react';
 import { DashboardStats, RevenueData, PolicyStatusData } from '@/types';
 import { dashboardAPI } from '@/services/api';
@@ -14,14 +15,16 @@ import { formatCurrency } from '@/utils/format';
 
 const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [, setRevenueData] = useState<RevenueData[]>([]);
-  const [, setPolicyStatusData] = useState<PolicyStatusData[]>([]);
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
+  const [policyStatusData, setPolicyStatusData] = useState<PolicyStatusData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const [statsData, revenueData, policyStatusData] = await Promise.all([
           dashboardAPI.getStats(),
           dashboardAPI.getRevenueData(),
@@ -33,17 +36,7 @@ const DashboardPage: React.FC = () => {
         setPolicyStatusData(policyStatusData);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
-        // Set mock data for demo
-        setStats({
-          totalUsers: 1250,
-          totalPolicies: 890,
-          totalProducts: 4,
-          totalRevenue: 12500000,
-          activePolicies: 756,
-          pendingPolicies: 134,
-          monthlyRevenue: 2100000,
-          userGrowth: 12.5,
-        });
+        setError('Failed to load dashboard data. Please check your connection and try again.');
       } finally {
         setIsLoading(false);
       }
@@ -56,6 +49,33 @@ const DashboardPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-600">Welcome to ImaraBima Admin Dashboard</p>
+        </div>
+        
+        <div className="card">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Connection Error</h3>
+              <p className="text-gray-500 mb-4">{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -118,16 +138,16 @@ const DashboardPage: React.FC = () => {
                   <div className="flex items-center mt-1">
                     {stat.changeType === 'increase' ? (
                       <TrendingUp className="h-4 w-4 text-green-500" />
-                                         ) : (
-                       <Activity className="h-4 w-4 text-gray-500" />
-                     )}
-                     <span
-                       className={`ml-1 text-sm font-medium ${
-                         stat.changeType === 'increase'
-                           ? 'text-green-600'
-                           : 'text-gray-600'
-                       }`}
-                     >
+                    ) : (
+                      <Activity className="h-4 w-4 text-gray-500" />
+                    )}
+                    <span
+                      className={`ml-1 text-sm font-medium ${
+                        stat.changeType === 'increase'
+                          ? 'text-green-600'
+                          : 'text-gray-600'
+                      }`}
+                    >
                       {stat.change > 0 ? '+' : ''}{stat.change}%
                     </span>
                     <span className="ml-1 text-sm text-gray-500">from last month</span>
