@@ -46,11 +46,13 @@ const PoliciesPage: React.FC = () => {
         policiesAPI.getAll(1, 100, selectedStatus || undefined),
         productsAPI.getAll()
       ]);
-      setPolicies(policiesResponse.data);
-      setProducts(productsResponse);
+      setPolicies(policiesResponse.data || []);
+      setProducts(productsResponse || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       setError('Failed to load policies. Please check your connection and try again.');
+      setPolicies([]); // Set empty array on error
+      setProducts([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }

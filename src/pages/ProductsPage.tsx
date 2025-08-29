@@ -47,10 +47,11 @@ const ProductsPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const response = await productsAPI.getAll(selectedType || undefined);
-      setProducts(response);
+      setProducts(response || []);
     } catch (error) {
       console.error('Failed to fetch products:', error);
       setError('Failed to load products. Please check your connection and try again.');
+      setProducts([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }

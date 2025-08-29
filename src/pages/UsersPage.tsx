@@ -38,10 +38,11 @@ const UsersPage: React.FC = () => {
       setIsLoading(true);
       setError(null);
       const response = await usersAPI.getAll(1, 100, searchTerm);
-      setUsers(response.data);
+      setUsers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setError('Failed to load users. Please check your connection and try again.');
+      setUsers([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }

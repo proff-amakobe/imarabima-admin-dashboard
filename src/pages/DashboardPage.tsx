@@ -6,7 +6,8 @@ import {
   DollarSign,
   TrendingUp,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import { DashboardStats } from '@/types';
 import { dashboardAPI } from '@/services/api';
@@ -17,6 +18,7 @@ const DashboardPage: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDevelopmentMode, setIsDevelopmentMode] = useState(false);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -25,6 +27,11 @@ const DashboardPage: React.FC = () => {
         setError(null);
         const statsData = await dashboardAPI.getStats();
         setStats(statsData);
+        
+        // Check if we're in development mode (mock data was used)
+        if ((import.meta as any).env?.DEV) {
+          setIsDevelopmentMode(true);
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
         setError('Failed to load dashboard data. Please check your connection and try again.');
@@ -108,6 +115,19 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Development Mode Banner */}
+      {isDevelopmentMode && (
+        <div className="card bg-blue-50 border-blue-200">
+          <div className="flex items-center space-x-2">
+            <Info className="h-5 w-5 text-blue-500" />
+            <div>
+              <p className="text-blue-700 font-medium">Development Mode</p>
+              <p className="text-blue-600 text-sm">The application is running with mock data since the API server is not available. This is normal for development.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
