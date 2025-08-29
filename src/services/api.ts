@@ -10,7 +10,6 @@ import {
   LoginRequest,
   LoginResponse,
   DashboardStats,
-  ApiResponse,
   PaginatedResponse
 } from '@/types';
 
@@ -144,32 +143,46 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('API Request:', config.method?.toUpperCase(), config.url, config.data || config.params);
     return config;
   },
   (error) => {
+    console.error('Request Error:', error);
     return Promise.reject(error);
   }
 );
 
 // Response interceptor to handle errors
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    console.log('API Response:', response.status, response.config.url, response.data);
+    return response;
+  },
   (error) => {
-    console.error('API Error:', error.message);
+    console.error('API Error:', error.response?.status, error.response?.config?.url, error.response?.data || error.message);
     return Promise.reject(error);
   }
 );
-
-
 
 // Auth API
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     try {
+      console.log('Attempting login with:', credentials.phone_number);
       const response = await api.post<LoginResponse>('/auth/login', credentials);
+      console.log('Login successful:', response.data);
+      
+      // Store token and user data
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      
       return response.data;
-    } catch (error) {
-      if (isDevelopment) {
+    } catch (error: any) {
+      console.error('Login failed:', error.response?.data || error.message);
+      
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock login for development');
         // Mock login for development
         if (credentials.phone_number === '+254700123456' && credentials.password === 'password') {
@@ -188,8 +201,10 @@ export const authAPI = {
   logout: async (): Promise<void> => {
     try {
       await api.post('/auth/logout');
-    } catch (error) {
-      if (isDevelopment) {
+      console.log('Logout successful');
+    } catch (error: any) {
+      console.error('Logout error:', error.response?.data || error.message);
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock logout for development');
       }
     }
@@ -199,10 +214,12 @@ export const authAPI = {
 
   verifyToken: async (): Promise<User> => {
     try {
-      const response = await api.get<ApiResponse<User>>('/auth/verify');
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{user: User}>('/auth/verify');
+      console.log('Token verification successful:', response.data);
+      return response.data.user;
+    } catch (error: any) {
+      console.error('Token verification failed:', error.response?.data || error.message);
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock user verification for development');
         return mockData.users[0];
       }
@@ -215,12 +232,22 @@ export const authAPI = {
 export const usersAPI = {
   getAll: async (page = 1, limit = 10, search = ''): Promise<PaginatedResponse<User>> => {
     try {
-      const response = await api.get<PaginatedResponse<User>>('/users', {
+      const response = await api.get<{users: User[], pagination: any}>('/users', {
         params: { page, limit, search },
       });
-      return response.data;
-    } catch (error) {
-      if (isDevelopment) {
+      console.log('Users fetched successfully:', response.data);
+      
+      // Transform the response to match our expected format
+      return {
+        data: response.data.users,
+        total: response.data.pagination.total,
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+        totalPages: response.data.pagination.totalPages
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch users:', error.response?.data || error.message);
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock users data for development');
         const filteredUsers = search 
           ? mockData.users.filter(user => 
@@ -243,10 +270,10 @@ export const usersAPI = {
 
   getById: async (id: string): Promise<User> => {
     try {
-      const response = await api.get<ApiResponse<User>>(`/users/${id}`);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{user: User}>(`/users/${id}`);
+      return response.data.user;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         const mockUser = mockData.users.find(u => u.id === id);
         if (!mockUser) throw new Error('User not found');
         return mockUser;
@@ -257,10 +284,10 @@ export const usersAPI = {
 
   create: async (userData: CreateUserRequest): Promise<User> => {
     try {
-      const response = await api.post<ApiResponse<User>>('/users/register', userData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.post<{user: User}>('/users/register', userData);
+      return response.data.user;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock user creation for development');
         const newUser: User = {
           id: Date.now().toString(),
@@ -281,20 +308,21 @@ export const usersAPI = {
 
   update: async (id: string, userData: UpdateUserRequest): Promise<User> => {
     try {
-      const response = await api.put<ApiResponse<User>>(`/users/${id}`, userData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.put<{user: User}>(`/users/${id}`, userData);
+      return response.data.user;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock user update for development');
         const userIndex = mockData.users.findIndex(u => u.id === id);
         if (userIndex === -1) throw new Error('User not found');
         
-        mockData.users[userIndex] = {
+        const updatedUser = {
           ...mockData.users[userIndex],
           ...userData,
           updated_at: new Date().toISOString()
         };
-        return mockData.users[userIndex];
+        mockData.users[userIndex] = updatedUser as User;
+        return updatedUser as User;
       }
       throw error;
     }
@@ -303,8 +331,8 @@ export const usersAPI = {
   delete: async (id: string): Promise<void> => {
     try {
       await api.delete(`/users/${id}`);
-    } catch (error) {
-      if (isDevelopment) {
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock user deletion for development');
         const userIndex = mockData.users.findIndex(u => u.id === id);
         if (userIndex !== -1) {
@@ -318,10 +346,10 @@ export const usersAPI = {
 
   toggleStatus: async (id: string): Promise<User> => {
     try {
-      const response = await api.patch<ApiResponse<User>>(`/users/${id}/toggle-status`);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.patch<{user: User}>(`/users/${id}/toggle-status`);
+      return response.data.user;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock status toggle for development');
         const user = mockData.users.find(u => u.id === id);
         if (!user) throw new Error('User not found');
@@ -339,12 +367,12 @@ export const usersAPI = {
 export const productsAPI = {
   getAll: async (type?: string): Promise<Product[]> => {
     try {
-      const response = await api.get<ApiResponse<Product[]>>('/products', {
+      const response = await api.get<{products: Product[]}>('/products', {
         params: { type },
       });
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      return response.data.products;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock products data for development');
         const filteredProducts = type 
           ? mockData.products.filter(product => product.type === type)
@@ -357,10 +385,10 @@ export const productsAPI = {
 
   getById: async (id: string): Promise<Product> => {
     try {
-      const response = await api.get<ApiResponse<Product>>(`/products/${id}`);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{product: Product}>(`/products/${id}`);
+      return response.data.product;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         const mockProduct = mockData.products.find(p => p.id === id);
         if (!mockProduct) throw new Error('Product not found');
         return mockProduct;
@@ -371,10 +399,10 @@ export const productsAPI = {
 
   create: async (productData: CreateProductRequest): Promise<Product> => {
     try {
-      const response = await api.post<ApiResponse<Product>>('/products', productData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.post<{product: Product}>('/products', productData);
+      return response.data.product;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock product creation for development');
         const newProduct: Product = {
           id: Date.now().toString(),
@@ -392,20 +420,21 @@ export const productsAPI = {
 
   update: async (id: string, productData: Partial<CreateProductRequest>): Promise<Product> => {
     try {
-      const response = await api.put<ApiResponse<Product>>(`/products/${id}`, productData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.put<{product: Product}>(`/products/${id}`, productData);
+      return response.data.product;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock product update for development');
         const productIndex = mockData.products.findIndex(p => p.id === id);
         if (productIndex === -1) throw new Error('Product not found');
         
-        mockData.products[productIndex] = {
+        const updatedProduct = {
           ...mockData.products[productIndex],
           ...productData,
           updated_at: new Date().toISOString()
         };
-        return mockData.products[productIndex];
+        mockData.products[productIndex] = updatedProduct as Product;
+        return updatedProduct as Product;
       }
       throw error;
     }
@@ -414,8 +443,8 @@ export const productsAPI = {
   delete: async (id: string): Promise<void> => {
     try {
       await api.delete(`/products/${id}`);
-    } catch (error) {
-      if (isDevelopment) {
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock product deletion for development');
         const productIndex = mockData.products.findIndex(p => p.id === id);
         if (productIndex !== -1) {
@@ -429,10 +458,10 @@ export const productsAPI = {
 
   toggleStatus: async (id: string): Promise<Product> => {
     try {
-      const response = await api.patch<ApiResponse<Product>>(`/products/${id}/toggle-status`);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.patch<{product: Product}>(`/products/${id}/toggle-status`);
+      return response.data.product;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock status toggle for development');
         const product = mockData.products.find(p => p.id === id);
         if (!product) throw new Error('Product not found');
@@ -450,12 +479,20 @@ export const productsAPI = {
 export const policiesAPI = {
   getAll: async (page = 1, limit = 10, status?: string): Promise<PaginatedResponse<Policy>> => {
     try {
-      const response = await api.get<PaginatedResponse<Policy>>('/policies', {
+      const response = await api.get<{policies: Policy[], pagination: any}>('/policies', {
         params: { page, limit, status },
       });
-      return response.data;
-    } catch (error) {
-      if (isDevelopment) {
+      
+      // Transform the response to match our expected format
+      return {
+        data: response.data.policies,
+        total: response.data.pagination.total,
+        page: response.data.pagination.page,
+        limit: response.data.pagination.limit,
+        totalPages: response.data.pagination.totalPages
+      };
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock policies data for development');
         const filteredPolicies = status 
           ? mockData.policies.filter(policy => policy.status === status)
@@ -475,10 +512,10 @@ export const policiesAPI = {
 
   getById: async (id: string): Promise<Policy> => {
     try {
-      const response = await api.get<ApiResponse<Policy>>(`/policies/${id}`);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{policy: Policy}>(`/policies/${id}`);
+      return response.data.policy;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         const mockPolicy = mockData.policies.find(p => p.id === id);
         if (!mockPolicy) throw new Error('Policy not found');
         return mockPolicy;
@@ -489,10 +526,10 @@ export const policiesAPI = {
 
   create: async (policyData: CreatePolicyRequest): Promise<Policy> => {
     try {
-      const response = await api.post<ApiResponse<Policy>>('/policies', policyData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.post<{policy: Policy}>('/policies', policyData);
+      return response.data.policy;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock policy creation for development');
         const newPolicy: Policy = {
           id: Date.now().toString(),
@@ -520,10 +557,10 @@ export const policiesAPI = {
 
   update: async (id: string, policyData: Partial<CreatePolicyRequest>): Promise<Policy> => {
     try {
-      const response = await api.put<ApiResponse<Policy>>(`/policies/${id}`, policyData);
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.put<{policy: Policy}>(`/policies/${id}`, policyData);
+      return response.data.policy;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock policy update for development');
         const policyIndex = mockData.policies.findIndex(p => p.id === id);
         if (policyIndex === -1) throw new Error('Policy not found');
@@ -534,7 +571,7 @@ export const policiesAPI = {
           updated_at: new Date().toISOString()
         };
         mockData.policies[policyIndex] = updatedPolicy as Policy;
-        return mockData.policies[policyIndex];
+        return updatedPolicy as Policy;
       }
       throw error;
     }
@@ -543,8 +580,8 @@ export const policiesAPI = {
   delete: async (id: string): Promise<void> => {
     try {
       await api.delete(`/policies/${id}`);
-    } catch (error) {
-      if (isDevelopment) {
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock policy deletion for development');
         const policyIndex = mockData.policies.findIndex(p => p.id === id);
         if (policyIndex !== -1) {
@@ -558,10 +595,10 @@ export const policiesAPI = {
 
   updateStatus: async (id: string, status: Policy['status']): Promise<Policy> => {
     try {
-      const response = await api.patch<ApiResponse<Policy>>(`/policies/${id}/status`, { status });
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.patch<{policy: Policy}>(`/policies/${id}/status`, { status });
+      return response.data.policy;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock status update for development');
         const policy = mockData.policies.find(p => p.id === id);
         if (!policy) throw new Error('Policy not found');
@@ -579,10 +616,12 @@ export const policiesAPI = {
 export const dashboardAPI = {
   getStats: async (): Promise<DashboardStats> => {
     try {
-      const response = await api.get<ApiResponse<DashboardStats>>('/dashboard/stats');
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<DashboardStats>('/dashboard/stats');
+      console.log('Dashboard stats fetched successfully:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Failed to fetch dashboard stats:', error.response?.data || error.message);
+      if (isDevelopment && error.response?.status === 404) {
         console.warn('API unavailable, using mock dashboard stats for development');
         return mockData.stats;
       }
@@ -592,10 +631,10 @@ export const dashboardAPI = {
 
   getRevenueData: async (): Promise<any[]> => {
     try {
-      const response = await api.get<ApiResponse<any[]>>('/dashboard/revenue');
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{revenue: any[]}>('/dashboard/revenue');
+      return response.data.revenue;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         return [
           { month: 'Jan', revenue: 5000 },
           { month: 'Feb', revenue: 6000 },
@@ -609,10 +648,10 @@ export const dashboardAPI = {
 
   getPolicyStatusData: async (): Promise<any[]> => {
     try {
-      const response = await api.get<ApiResponse<any[]>>('/dashboard/policy-status');
-      return response.data.data!;
-    } catch (error) {
-      if (isDevelopment) {
+      const response = await api.get<{policyStatus: any[]}>('/dashboard/policy-status');
+      return response.data.policyStatus;
+    } catch (error: any) {
+      if (isDevelopment && error.response?.status === 404) {
         return [
           { status: 'Active', count: 67 },
           { status: 'Pending', count: 12 },
