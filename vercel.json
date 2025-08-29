@@ -6,11 +6,11 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://imarabima-platform-fitpf2zz6-proff-amakobes-projects.vercel.app"
+    "VITE_API_URL": "https://imarabima-platform.vercel.app"
   },
   "build": {
     "env": {
-      "VITE_API_URL": "https://imarabima-platform-fitpf2zz6-proff-amakobes-projects.vercel.app"
+      "VITE_API_URL": "https://imarabima-platform.vercel.app"
     }
   }
 }

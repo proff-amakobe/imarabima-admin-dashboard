@@ -113,7 +113,7 @@ const mockData = {
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
-  baseURL: (import.meta as any).env?.VITE_API_URL || 'https://imarabima-platform-fitpf2zz6-proff-amakobes-projects.vercel.app',
+  baseURL: (import.meta as any).env?.VITE_API_URL || 'https://imarabima-platform.vercel.app',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
